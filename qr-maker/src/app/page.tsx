@@ -11,34 +11,39 @@ import { Switch } from "@/components/ui/switch";
 import JSZip from 'jszip';
 import QRCode from 'qrcode';
 
-const QRGenerator = () => {
-  const [startingNumber, setStartingNumber] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [addText, setAddText] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState('');
-  const [downloadReady, setDownloadReady] = useState(false);
-  const [generatedZip, setGeneratedZip] = useState(null);
+interface QRData {
+  Dom: string;
+  ID: string;
+}
+
+const QRGenerator: React.FC = () => {
+  const [startingNumber, setStartingNumber] = useState<string>('');
+  const [quantity, setQuantity] = useState<string>('');
+  const [addText, setAddText] = useState<boolean>(true);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [progress, setProgress] = useState<number>(0);
+  const [error, setError] = useState<string>('');
+  const [downloadReady, setDownloadReady] = useState<boolean>(false);
+  const [generatedZip, setGeneratedZip] = useState<Blob | null>(null);
 
   // Function to generate random 2 letter combination
-  const generateRandomLetters = () => {
+  const generateRandomLetters = (): string => {
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     return letters.charAt(Math.floor(Math.random() * 26)) + 
            letters.charAt(Math.floor(Math.random() * 26));
   };
 
   // Function to convert number to hex
-  const toHex = (num) => {
+  const toHex = (num: number): string => {
     return num.toString(16).toUpperCase().padStart(2, '0');
   };
 
-  const generateQRWithText = async (qrData, text) => {
+  const generateQRWithText = async (qrData: string, text: string): Promise<Blob> => {
     // QR code parameters to match Python script
-    const qrOptions = {
+    const qrOptions: QRCode.QRCodeToDataURLOptions = {
       errorCorrectionLevel: 'L',
       margin: 2,
-      width: 150, // Reduced from 300 to 150
+      width: 150,
       color: {
         dark: '#000000',
         light: '#ffffff',
@@ -53,6 +58,10 @@ const QRGenerator = () => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
+    if (!ctx) {
+      throw new Error('Could not get canvas context');
+    }
+
     // Dimensions and padding (matching Python script)
     const qrSize = qrCanvas.width;
     const padding = 5;
@@ -62,7 +71,6 @@ const QRGenerator = () => {
     if (addText) {
       // Set up text to measure dimensions
       ctx.font = `bold ${fontSize}px Arial`;
-      const textMetrics = ctx.measureText(text);
       const textHeight = fontSize;
       
       // Set canvas dimensions
@@ -91,12 +99,18 @@ const QRGenerator = () => {
       ctx.drawImage(qrCanvas, 0, 0);
     }
 
-    return new Promise((resolve) => {
-      canvas.toBlob(resolve, 'image/png', 0.8); // Added compression
+    return new Promise<Blob>((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          throw new Error('Failed to create blob from canvas');
+        }
+      }, 'image/png', 0.8);
     });
   };
 
-  const generateQRCodes = async () => {
+  const generateQRCodes = async (): Promise<void> => {
     try {
       setIsGenerating(true);
       setError('');
@@ -113,6 +127,10 @@ const QRGenerator = () => {
       const zip = new JSZip();
       const qrFolder = zip.folder("qr-codes");
       
+      if (!qrFolder) {
+        throw new Error('Failed to create ZIP folder');
+      }
+
       // Generate random letters once for the entire batch
       const batchLetters = generateRandomLetters();
       
@@ -121,7 +139,7 @@ const QRGenerator = () => {
       const batches = Math.ceil(qty / batchSize);
 
       for (let batch = 0; batch < batches; batch++) {
-        const batchPromises = [];
+        const batchPromises: Promise<void>[] = [];
         const start = batch * batchSize;
         const end = Math.min(start + batchSize, qty);
 
@@ -129,7 +147,7 @@ const QRGenerator = () => {
           const currentNum = startNum + i;
           const hexNum = toHex(currentNum);
           
-          const data = {
+          const data: QRData = {
             Dom: "DSQRASSET",
             ID: `${batchLetters}${hexNum}`
           };
@@ -157,16 +175,16 @@ const QRGenerator = () => {
       const content = await zip.generateAsync({ type: "blob" });
       setGeneratedZip(content);
       setDownloadReady(true);
-      setError('success'); // Using error state for success message
+      setError('success');
       
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = (): void => {
     if (generatedZip) {
       const url = URL.createObjectURL(generatedZip);
       const a = document.createElement('a');
@@ -207,9 +225,9 @@ const QRGenerator = () => {
               <Input
                 id="quantity"
                 type="number"
-                placeholder="Enter quantity (max 1000)"
+                placeholder="Enter quantity (max 2000)"
                 value={quantity}
-                onChange={(e) => setQuantity(Math.min(1000, parseInt(e.target.value) || ''))}
+                onChange={(e) => setQuantity(Math.min(2000, parseInt(e.target.value) || '').toString())}
                 disabled={isGenerating}
               />
             </div>

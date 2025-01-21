@@ -7,11 +7,16 @@ import { Label } from "@/components/ui/label";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-export default function LoginPage() {
-  const handleSubmit = async (e) => {
+interface AuthResponse {
+  error?: string;
+}
+
+const LoginPage: React.FC = () => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const passkey = formData.get('passkey');
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+    const passkey = formData.get('passkey') as string;
 
     try {
       const response = await fetch('/api/auth/', {
@@ -26,7 +31,7 @@ export default function LoginPage() {
         window.location.href = '/';
       } else {
         // Handle error
-        const error = await response.json();
+        const error = await response.json() as AuthResponse;
         alert(error.error || 'Invalid passkey');
       }
     } catch (error) {
@@ -66,4 +71,6 @@ export default function LoginPage() {
       </Card>
     </div>
   );
-}
+};
+
+export default LoginPage;

@@ -227,8 +227,15 @@ const QRGenerator: React.FC = () => {
                 type="number"
                 placeholder="Enter quantity (max 2000)"
                 value={quantity}
-                onChange={(e) => setQuantity(Math.min(2000, parseInt(e.target.value) || '').toString())}
-                disabled={isGenerating}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const parsed = parseInt(value);
+                  if (!isNaN(parsed)) {
+                    setQuantity(Math.min(2000, parsed).toString());
+                  } else {
+                    setQuantity('');
+                  }
+                }}                disabled={isGenerating}
               />
             </div>
 
